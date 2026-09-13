@@ -44,9 +44,15 @@ const MaintenancePrediction = ({ latestData }) => {
               <div className="text-slate-500 text-xs font-bold mb-1 uppercase">Machine</div>
               <div className="text-lg text-slate-200 font-medium">{latestData.machineId}</div>
             </div>
-            <div>
-              <div className="text-slate-500 text-xs font-bold mb-1 uppercase">Risk Level</div>
-              <div className={`text-lg font-bold ${riskColor}`}>{riskLevel}</div>
+            <div className="flex gap-4">
+              <div>
+                <div className="text-slate-500 text-xs font-bold mb-1 uppercase">Machine Health</div>
+                <div className={`text-lg font-bold ${riskColor}`}>{latestData.machineHealth || latestData.status || "NORMAL"}</div>
+              </div>
+              <div>
+                <div className="text-slate-500 text-xs font-bold mb-1 uppercase">Risk Level</div>
+                <div className={`text-lg font-bold ${riskColor}`}>{riskLevel}</div>
+              </div>
             </div>
           </div>
         </div>

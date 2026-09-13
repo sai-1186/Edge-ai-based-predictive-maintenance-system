@@ -1,34 +1,68 @@
 # Edge AI Predictive Maintenance System
 
-A complete full-stack web application designed for an industrial manufacturing environment. It monitors industrial machine health using an ESP32 sensor node, a TX PC (processing server), and an RX PC (dashboard computer) in a local network without requiring cloud services.
+A complete full-stack industrial predictive maintenance system. It monitors industrial machine health using an **ESP32 Edge AI sensor node**, a **TX-PC** (communication/forwarding server), and an **RX-PC** (real-time monitoring dashboard) operating in a local network without requiring cloud services.
 
 ## System Architecture
 
 ```
-ESP32 Sensor Node 
-       ↓ (Wi-Fi: HTTP POST)
-    TX PC Server (Node.js AI Engine & WebSocket Server)
-       ↓ (Wi-Fi/LAN: WebSockets)
-RX PC Dashboard (React/Vite Real-time UI)
+Sensors (DHT11, MPU6050, ACS712)
+       │
+       ▼
+ESP32 Sensor Node (Edge AI Device)
+  ├── Temperature, Humidity, Current, Vibration Acquisition
+  ├── StandardScaler Preprocessing
+  ├── TensorFlow Lite Micro On-Chip Inference (predmodel.h)
+  ├── Machine Health Classification ("Normal", "Warning", "Critical")
+  ├── Industrial ST7735 TFT Color-Coded Display
+  └── Wi-Fi JSON Dispatch (Non-blocking)
+       │ (HTTP POST / WebSocket)
+       ▼
+TX-PC Forwarding Server (Node.js Network Broker)
+  ├── Receives ESP32 JSON
+  ├── Preserves ESP32 "machineHealth"
+  └── Broadcasts to Dashboard via WebSockets
+       │ (WebSockets)
+       ▼
+RX-PC Dashboard (React / Vite Real-Time UI)
+  ├── Live Sensor Gauges & Real-Time Waveform Charts
+  └── Machine Health Status & Predictive Maintenance Alerts
 ```
 
 ## Features
-- **Real-time Monitoring:** Low latency data pipeline using WebSockets.
-- **Edge AI Prediction:** Rule-based anomaly engine calculating Health Score, Anomaly Score, and Maintenance Risk.
-- **Vibration Analysis:** Dedicated panel tracking X, Y, Z axes, Peak, and RMS vibrations.
-- **Simulation Mode:** Built-in data simulator for testing the UI without physical ESP32 hardware.
-- **Industrial UI:** Premium dark mode aesthetic suitable for heavy manufacturing plants.
+- **True Edge AI:** TensorFlow Lite Micro running directly on the ESP32 microcontroller with embedded neural network model weights (`predmodel.h`) and class labels (`predlabel.h`).
+- **Resilient Non-Blocking Operation:** Local sensor reading, AI inference, and TFT display continue uninterrupted even if Wi-Fi disconnects or is unavailable.
+- **Innovative TFT UI:** Compact industrial display (160x128 ST7735) with custom graphical primitive icons, color-coded health states, and zero-flicker partial updates.
+- **Real-Time Monitoring Pipeline:** Ultra-low latency data transmission via WebSockets.
+- **Simulation Mode:** Built-in data simulator for testing the UI and alerts without physical hardware connected.
 
 ---
 
 ## Installation & Setup
 
-### 1. TX PC (Backend Server)
+### 1. ESP32 (Sensor Node & Edge AI)
 
-This server processes ESP32 data and hosts the WebSockets server for the dashboard.
+1. Open `esp32_sensor_node/sensor_transmitter/sensor_transmitter.ino` in the Arduino IDE.
+2. Ensure the required libraries are installed (via Arduino Library Manager):
+   - `TensorFlowLite_ESP32`
+   - `Adafruit GFX Library`
+   - `Adafruit ST7735 and ST7789 Library`
+   - `Adafruit MPU6050`
+   - `Adafruit Unified Sensor`
+   - `DHT sensor library`
+3. Update the Wi-Fi credentials and TX-PC server URL in `sensor_transmitter.ino`:
+   ```cpp
+   const char* ssid = "YOUR_WIFI_SSID";
+   const char* password = "YOUR_WIFI_PASSWORD";
+   const char* serverUrl = "http://192.168.1.100:8080/api/data";
+   ```
+4. Select board **ESP32 Dev Module**, choose the correct COM port, and click **Upload**.
 
-1. Install Node.js (v18+).
-2. Open a terminal and navigate to the backend folder:
+### 2. TX-PC (Communication & Forwarding Server)
+
+This server receives data from the ESP32 and broadcasts it to the dashboard. It does **not** perform AI prediction; it serves strictly as the network forwarding layer.
+
+1. Ensure Node.js (v18+) is installed.
+2. Open a terminal and navigate to the `tx-server` directory:
    ```bash
    cd tx-server
    ```
@@ -40,13 +74,11 @@ This server processes ESP32 data and hosts the WebSockets server for the dashboa
    ```bash
    node server.js
    ```
-5. Note the TX PC's IP address. On Windows, run `ipconfig` (look for "IPv4 Address"). Let's assume it is `192.168.1.100`.
+5. Check your TX-PC IP address (e.g. `ipconfig` on Windows).
 
-### 2. RX PC (Dashboard)
+### 3. RX-PC (Dashboard)
 
-This is the computer that displays the monitoring UI.
-
-1. Navigate to the frontend folder:
+1. Navigate to the `frontend` directory:
    ```bash
    cd frontend
    ```
@@ -54,47 +86,21 @@ This is the computer that displays the monitoring UI.
    ```bash
    npm install
    ```
-3. Create a `.env` file based on `.env.example`. Update it with the IP address of your TX PC:
+3. Create or update `.env` with your TX-PC IP:
    ```env
    VITE_TX_SERVER_URL=ws://192.168.1.100:8080
    ```
-   *(If you are running both frontend and backend on the same computer, you can use `ws://127.0.0.1:8080`)*
+   *(Use `ws://127.0.0.1:8080` if running locally on the same computer)*
 4. Start the dashboard:
    ```bash
    npm run dev
    ```
-5. Open your browser to the URL provided by Vite (usually `http://localhost:5173`).
-
-### 3. ESP32 (Sensor Node)
-
-1. Open `esp32/sensor_transmitter.ino` in the Arduino IDE.
-2. Update the Wi-Fi credentials:
-   ```cpp
-   const char* ssid = "YOUR_WIFI_SSID";
-   const char* password = "YOUR_WIFI_PASSWORD";
-   ```
-3. Update the `serverUrl` with the IP address of your TX PC:
-   ```cpp
-   const char* serverUrl = "http://192.168.1.100:8080/api/data";
-   ```
-4. Compile and upload to the ESP32.
+5. Open your browser to `http://localhost:5173`.
 
 ---
 
-## Testing / Simulation Mode
+### Example JSON Payload (ESP32 -> TX-PC -> RX-PC)
 
-If you don't have an ESP32 connected, you can still test the entire system:
-1. Ensure both the TX Server and RX Dashboard are running.
-2. Open the Dashboard in your browser.
-3. Click the **"SIMULATION OFF"** button in the top right corner. It will turn on and begin broadcasting realistic sensor data with occasional anomalies to trigger the predictive maintenance alerts.
-
-## Troubleshooting
-
-- **ESP32 won't connect:** Ensure the ESP32 and TX PC are on the same Wi-Fi network. Check the Arduino Serial Monitor (baud 115200).
-- **Dashboard says DISCONNECTED:** The frontend cannot reach the WebSocket server. Check that the `VITE_TX_SERVER_URL` in your `.env` file points to the correct IP of the TX PC. Ensure no firewalls on the TX PC are blocking port `8080`.
-- **Invalid data errors:** If passing real sensor data, ensure it matches the expected JSON format.
-
-### Example JSON Payload (ESP32 -> TX PC)
 ```json
 {
   "machineId": "MOTOR-01",
@@ -103,6 +109,7 @@ If you don't have an ESP32 connected, you can still test the entire system:
   "vibrationX": 0.21,
   "vibrationY": 0.18,
   "vibrationZ": 0.35,
-  "current": 8.6
+  "current": 8.6,
+  "machineHealth": "Warning"
 }
 ```

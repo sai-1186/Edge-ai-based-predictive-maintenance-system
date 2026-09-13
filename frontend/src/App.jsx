@@ -196,9 +196,9 @@ function App() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
         <StatusCard 
           title="Machine Health" 
-          value={latestData ? `${latestData.healthScore}%` : '--'} 
-          unit=""
-          status={latestData?.status || "UNKNOWN"}
+          value={latestData?.machineHealth || (latestData ? `${latestData.healthScore}%` : '--')} 
+          unit={latestData?.healthScore !== undefined ? `(${latestData.healthScore}%)` : ''}
+          status={latestData?.machineHealth ? latestData.machineHealth.toUpperCase() : (latestData?.status || "UNKNOWN")}
           icon={ShieldCheck}
         />
         <StatusCard 
